@@ -1,18 +1,24 @@
 # 🚦 Smart City Traffic Analytics
 
-A full-stack big-data analytics platform with real-time traffic monitoring,
-congestion detection, and an admin control panel.
+> Real-time traffic monitoring and congestion detection platform for smart cities — built with Flask, MongoDB, MySQL, and Apache Kafka, fully containerized with Docker.
 
-## Stack
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Flask](https://img.shields.io/badge/Flask-3.0-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Kafka](https://img.shields.io/badge/Apache%20Kafka-7.5-231F20?logo=apachekafka&logoColor=white)](https://kafka.apache.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-| Layer        | Technology                        |
-|--------------|-----------------------------------|
-| Backend API  | Python 3.11 · Flask 3             |
-| Auth DB      | MySQL 8.0 (users / auth)          |
-| Analytics DB | MongoDB 7 (traffic records)       |
-| Streaming    | Apache Kafka 7.5 + Zookeeper      |
-| Frontend     | Vanilla JS + Chart.js             |
-| Container    | Docker Compose                    |
+A full-stack big data analytics system that simulates and analyzes live city traffic — vehicle GPS streams, speed tracking, congestion alerts, and an admin control panel — using a polyglot persistence architecture (MongoDB for high-volume traffic events, MySQL for relational user auth) connected through Kafka.
+
+## ✨ Features
+
+- 🗺️ **Live city map** — real-time vehicle positions rendered on an interactive grid
+- 🚨 **Automatic congestion detection** — flags slow-traffic zones by road and severity
+- 📊 **Analytics dashboard** — Chart.js visualizations for vehicle distribution & speed heatmaps
+- 🔐 **Role-based auth** — separate user and admin panels with bcrypt password hashing
+- ⚡ **Data simulator** — generates realistic rush-hour/night traffic patterns across 5 roads
+- 🐳 **One-command setup** — `docker compose up --build` and you're running
 
 ---
 
