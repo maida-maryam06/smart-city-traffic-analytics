@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrafficOS — Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #05080f; --surface: #0c1220; --surface2: #0f1830; --border: #1a2640;
+            --accent: #00e5ff; --purple: #b06fff; --green: #00ff88;
+            --yellow: #ffd60a; --text: #e0eeff; --muted: #4a6080; --danger: #ff3d5a;
+            --font-mono: 'Space Mono', monospace; --font-display: 'Syne', sans-serif;
+        }
+        body { background: var(--bg); color: var(--text); font-family: var(--font-display); min-height: 100vh; display: flex; }
+        .sidebar { width: 240px; min-width: 240px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; }
+        .sidebar-brand { padding: 0 24px 28px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .sidebar-brand-name { font-size: 20px; font-weight: 800; color: var(--purple); display: flex; align-items: center; gap: 8px; }
+        .sidebar-brand-sub { font-family: var(--font-mono); font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-top: 4px; }
+        .admin-badge { background: rgba(176,111,255,0.15); border: 1px solid rgba(176,111,255,0.3); border-radius: 4px; padding: 2px 8px; font-family: var(--font-mono); font-size: 9px; color: var(--purple); letter-spacing: 1px; margin-top: 6px; display: inline-block; }
+        .nav-section-label { font-family: var(--font-mono); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 0 24px; margin-bottom: 6px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 11px 24px; cursor: pointer; transition: all 0.15s; font-size: 14px; font-weight: 600; color: var(--muted); text-decoration: none; border-left: 3px solid transparent; }
+        .nav-item:hover { background: rgba(176,111,255,0.05); color: var(--text); }
+        .nav-item.active { background: rgba(176,111,255,0.08); color: var(--purple); border-left-color: var(--purple); }
+        .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+        .sidebar-bottom { margin-top: auto; padding: 20px 24px; border-top: 1px solid var(--border); }
+        .user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .user-avatar { width: 34px; height: 34px; background: linear-gradient(135deg, var(--purple), var(--accent)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #000; }
+        .user-name { font-size: 13px; font-weight: 700; }
+        .user-role { font-family: var(--font-mono); font-size: 10px; color: var(--purple); }
+        .btn-logout { width: 100%; background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 8px; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: all 0.2s; }
+        .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+        .main { margin-left: 240px; flex: 1; padding: 28px; overflow-y: auto; min-height: 100vh; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+        .page-title { font-size: 26px; font-weight: 800; }
+        .page-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+        .admin-pill { display: flex; align-items: center; gap: 8px; background: rgba(176,111,255,0.1); border: 1px solid rgba(176,111,255,0.2); border-radius: 20px; padding: 6px 14px; font-family: var(--font-mono); font-size: 11px; color: var(--purple); }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; overflow: hidden; }
+        .stat-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: var(--purple); opacity: 0.5; }
+        .stat-card.green::after { background: var(--green); }
+        .stat-card.yellow::after { background: var(--yellow); }
+        .stat-card.danger::after { background: var(--danger); }
+        .stat-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+        .stat-value { font-size: 32px; font-weight: 800; color: var(--text); line-height: 1; margin-bottom: 6px; }
+        .stat-trend { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+        .stat-icon { position: absolute; top: 16px; right: 16px; font-size: 22px; opacity: 0.4; }
+        .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; }
+        .panel.full { grid-column: 1 / -1; }
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .panel-title { font-size: 15px; font-weight: 700; }
+        .panel-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+        .btn-refresh { background: rgba(176,111,255,0.08); border: 1px solid rgba(176,111,255,0.2); color: var(--purple); padding: 6px 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: all 0.2s; }
+        .btn-refresh:hover { background: rgba(176,111,255,0.15); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+        td { padding: 10px 12px; border-bottom: 1px solid rgba(26,38,64,0.5); vertical-align: middle; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(176,111,255,0.03); }
+        .mono { font-family: var(--font-mono); font-size: 12px; }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; }
+        .badge-admin { background: rgba(176,111,255,0.15); color: var(--purple); border: 1px solid rgba(176,111,255,0.3); }
+        .badge-user { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+        .badge-high { background: rgba(255,61,90,0.1); color: var(--danger); }
+        .badge-medium { background: rgba(255,214,10,0.1); color: var(--yellow); }
+        .badge-low { background: rgba(0,255,136,0.1); color: var(--green); }
+        .btn-delete { background: rgba(255,61,90,0.1); border: 1px solid rgba(255,61,90,0.2); color: var(--danger); padding: 4px 10px; border-radius: 4px; font-family: var(--font-mono); font-size: 11px; cursor: pointer; transition: all 0.2s; }
+        .btn-delete:hover { background: rgba(255,61,90,0.2); }
+        .tab-bar { display: flex; gap: 2px; background: var(--surface2); border-radius: 8px; padding: 3px; margin-bottom: 20px; }
+        .tab { flex: 1; text-align: center; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); transition: all 0.2s; }
+        .tab.active { background: var(--surface); color: var(--text); }
+        .status-grid { display: flex; gap: 12px; }
+        .status-item { flex: 1; padding: 14px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .status-val { font-size: 13px; font-weight: 700; margin-top: 4px; }
+        .status-ok { color: var(--green); } .status-err { color: var(--danger); }
+        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 20px; font-family: var(--font-mono); font-size: 13px; z-index: 999; transform: translateY(80px); opacity: 0; transition: all 0.3s; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: rgba(0,255,136,0.4); color: var(--green); }
+        .toast.error { border-color: rgba(255,61,90,0.4); color: var(--danger); }
+        .empty-state { text-align: center; padding: 40px; color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+        canvas { max-height: 200px; }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-name">🔐 TrafficOS</div>
+        <div class="sidebar-brand-sub">// ADMIN CONTROL</div>
+        <div class="admin-badge">ADMINISTRATOR</div>
+    </div>
+
+    <div class="nav-section-label" style="margin-top:8px">Overview</div>
+    <a class="nav-item active"><span class="icon">📊</span> Analytics</a>
+    <a class="nav-item" onclick="showTab('users')"><span class="icon">👥</span> User Management</a>
+    <a class="nav-item" onclick="showTab('traffic')"><span class="icon">🚗</span> Traffic Data</a>
+
+    <div class="nav-section-label" style="margin-top:16px">System</div>
+    <a class="nav-item" onclick="showTab('status')"><span class="icon">⚙️</span> Health Monitor</a>
+    <a class="nav-item" href="dashboard.html"><span class="icon">↗</span> User Dashboard</a>
+
+    <div class="sidebar-bottom">
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">A</div>
+            <div>
+                <div class="user-name" id="userName">Admin</div>
+                <div class="user-role">🔐 administrator</div>
+            </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">⏻ Sign out</button>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="topbar">
+        <div>
+            <div class="page-title">Admin Control Panel</div>
+            <div class="page-sub" id="timeDisplay">// loading...</div>
+        </div>
+        <div class="admin-pill">🔐 ADMIN ACCESS</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-label">Total Users</div>
+            <div class="stat-value" id="statTotal">—</div>
+            <div class="stat-trend">registered</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-icon">👤</div>
+            <div class="stat-label">Regular Users</div>
+            <div class="stat-value" id="statRegular">—</div>
+            <div class="stat-trend">operators</div>
+        </div>
+        <div class="stat-card yellow">
+            <div class="stat-icon">🔐</div>
+            <div class="stat-label">Admins</div>
+            <div class="stat-value" id="statAdmins">—</div>
+            <div class="stat-trend">elevated access</div>
+        </div>
+        <div class="stat-card danger">
+            <div class="stat-icon">🚗</div>
+            <div class="stat-label">Traffic Records</div>
+            <div class="stat-value" id="statTraffic">—</div>
+            <div class="stat-trend">in MongoDB</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="content-grid" style="margin-bottom:20px">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Top Roads by Traffic</div>
+                    <div class="panel-sub">record count per road</div>
+                </div>
+            </div>
+            <canvas id="roadsChart"></canvas>
+        </div>
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Vehicle Distribution</div>
+                    <div class="panel-sub">by type</div>
+                </div>
+            </div>
+            <canvas id="vehicleChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Tabs content -->
+    <div class="panel full" id="usersPanel">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">👥 User Management</div>
+                <div class="panel-sub">all registered accounts</div>
+            </div>
+            <button class="btn-refresh" onclick="loadUsers()">↻ Refresh</button>
+        </div>
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+            <table>
+                <thead><tr>
+                    <th>ID</th><th>Username</th><th>Email</th><th>Role</th><th>Created</th><th>Action</th>
+                </tr></thead>
+                <tbody id="usersBody"><tr><td colspan="6" class="empty-state">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel full" style="margin-top:20px" id="trafficPanel">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">🚗 Traffic Records</div>
+                <div class="panel-sub">all MongoDB records</div>
+            </div>
+            <button class="btn-refresh" onclick="loadTrafficData()">↻ Refresh</button>
+        </div>
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+            <table>
+                <thead><tr>
+                    <th>Vehicle</th><th>Speed</th><th>Road</th><th>Type</th><th>Congestion</th><th>Timestamp</th><th>Action</th>
+                </tr></thead>
+                <tbody id="trafficBody"><tr><td colspan="7" class="empty-state">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Health -->
+    <div class="panel" style="margin-top:20px">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">⚙️ System Health</div>
+                <div class="panel-sub">service status</div>
+            </div>
+            <button class="btn-refresh" onclick="loadHealth()">↻ Check</button>
+        </div>
+        <div class="status-grid" id="statusGrid">
+            <div class="status-item"><div style="font-size:20px">⏳</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">FLASK</div><div class="status-val">—</div></div>
+            <div class="status-item"><div style="font-size:20px">⏳</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">MONGODB</div><div class="status-val">—</div></div>
+            <div class="status-item"><div style="font-size:20px">⏳</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">MYSQL</div><div class="status-val">—</div></div>
+        </div>
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = 'http://localhost:5000/api';
+
+// Auth
+const userStr = localStorage.getItem('user');
+if (!userStr) window.location.href = 'login.html';
+const user = JSON.parse(userStr || '{}');
+if (!user.is_admin) window.location.href = 'dashboard.html';
+document.getElementById('userName').textContent = user.username || 'Admin';
+document.getElementById('userAvatar').textContent = (user.username || 'A')[0].toUpperCase();
+
+function logout() {
+    if (confirm('Sign out?')) { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+}
+
+setInterval(() => {
+    document.getElementById('timeDisplay').textContent = '// ' + new Date().toLocaleString([], {weekday:'long',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}, 1000);
+
+function toast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + type;
+    setTimeout(() => el.className = 'toast', 3000);
+}
+
+let roadsChart = null;
+let vehicleChart = null;
+
+async function loadAdminStats() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/stats`);
+        const s = await res.json();
+        document.getElementById('statTotal').textContent = s.total_users ?? 0;
+        document.getElementById('statRegular').textContent = s.regular_users ?? 0;
+        document.getElementById('statAdmins').textContent = s.admin_users ?? 0;
+        document.getElementById('statTraffic').textContent = s.total_traffic_records ?? 0;
+
+        // Roads chart
+        if (s.top_roads?.length) {
+            const ctx = document.getElementById('roadsChart').getContext('2d');
+            if (roadsChart) roadsChart.destroy();
+            roadsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: s.top_roads.map(r => r.road),
+                    datasets: [{
+                        data: s.top_roads.map(r => r.count),
+                        backgroundColor: 'rgba(176,111,255,0.5)',
+                        borderColor: '#b06fff',
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { grid: { color: 'rgba(26,38,64,0.8)' }, ticks: { color: '#4a6080', font: { family: 'Space Mono', size: 10 } } },
+                        x: { grid: { display: false }, ticks: { color: '#4a6080', font: { family: 'Space Mono', size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        // Vehicle chart
+        if (s.vehicle_distribution?.length) {
+            const ctx2 = document.getElementById('vehicleChart').getContext('2d');
+            if (vehicleChart) vehicleChart.destroy();
+            vehicleChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: s.vehicle_distribution.map(v => v.type),
+                    datasets: [{
+                        data: s.vehicle_distribution.map(v => v.count),
+                        backgroundColor: ['#00e5ff','#ff6b35','#00ff88','#ffd60a'],
+                        borderColor: '#0c1220',
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#4a6080', font: { family: 'Space Mono', size: 11 }, padding: 16 } } }
+                }
+            });
+        }
+    } catch (e) { console.error('Stats error', e); }
+}
+
+async function loadUsers() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/users`);
+        const users = await res.json();
+        const tbody = document.getElementById('usersBody');
+        if (!users.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users found</td></tr>'; return; }
+        tbody.innerHTML = users.map(u => `
+            <tr>
+                <td class="mono">#${u.id}</td>
+                <td style="font-weight:700">${u.username}</td>
+                <td class="mono" style="font-size:12px;color:var(--muted)">${u.email}</td>
+                <td><span class="badge ${u.is_admin ? 'badge-admin' : 'badge-user'}">${u.is_admin ? '🔐 admin' : '👤 user'}</span></td>
+                <td class="mono" style="font-size:11px;color:var(--muted)">${u.created_at || '—'}</td>
+                <td>${!u.is_admin ? `<button class="btn-delete" onclick="deleteUser(${u.id},'${u.username}')">Delete</button>` : '<span style="color:var(--muted);font-family:var(--font-mono);font-size:11px">protected</span>'}</td>
+            </tr>
+        `).join('');
+    } catch (e) { document.getElementById('usersBody').innerHTML = '<tr><td colspan="6" class="empty-state" style="color:var(--danger)">Error loading users</td></tr>'; }
+}
+
+async function deleteUser(id, name) {
+    if (!confirm(`Delete user "${name}"?`)) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/users/${id}`, { method: 'DELETE' });
+        if (res.ok) { toast(`✅ User "${name}" deleted`); loadUsers(); loadAdminStats(); }
+        else { const d = await res.json(); toast('⚠ ' + d.error, 'error'); }
+    } catch (e) { toast('⚠ Server error', 'error'); }
+}
+
+async function loadTrafficData() {
+    try {
+        const res = await fetch(`${API_BASE}/admin/traffic-data?limit=30`);
+        const data = await res.json();
+        const records = data.data || [];
+        const tbody = document.getElementById('trafficBody');
+        if (!records.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No records. Use the simulator!</td></tr>'; return; }
+        tbody.innerHTML = records.map(r => {
+            const sp = r.speed || 0;
+            const cls = sp > 40 ? 'badge-low' : sp > 20 ? '' : 'badge-high';
+            const congCls = r.congestion_level === 'high' ? 'badge-high' : r.congestion_level === 'medium' ? '' : 'badge-low';
+            return `
+            <tr>
+                <td class="mono" style="color:var(--accent)">${r.vehicle_id || '—'}</td>
+                <td><span class="badge ${cls}" style="${cls ? '' : 'background:rgba(255,214,10,0.1);color:#ffd60a'}">${sp} km/h</span></td>
+                <td style="font-size:12px">${r.road_name || '—'}</td>
+                <td class="mono" style="font-size:11px">${r.vehicle_type || '—'}</td>
+                <td><span class="badge ${congCls}" style="${congCls ? '' : 'background:rgba(255,214,10,0.1);color:#ffd60a'}">${r.congestion_level || '—'}</span></td>
+                <td class="mono" style="font-size:11px;color:var(--muted)">${r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '—'}</td>
+                <td><button class="btn-delete" onclick="deleteTraffic('${r._id}')">Del</button></td>
+            </tr>`;
+        }).join('');
+    } catch (e) { document.getElementById('trafficBody').innerHTML = '<tr><td colspan="7" class="empty-state" style="color:var(--danger)">Error loading data</td></tr>'; }
+}
+
+async function deleteTraffic(id) {
+    if (!confirm('Delete this traffic record?')) return;
+    try {
+        const res = await fetch(`${API_BASE}/admin/traffic-data/${id}`, { method: 'DELETE' });
+        if (res.ok) { toast('✅ Record deleted'); loadTrafficData(); loadAdminStats(); }
+        else { const d = await res.json(); toast('⚠ ' + d.error, 'error'); }
+    } catch (e) { toast('⚠ Server error', 'error'); }
+}
+
+async function loadHealth() {
+    try {
+        const res = await fetch(`${API_BASE}/health`);
+        const h = await res.json();
+        const grid = document.getElementById('statusGrid');
+        const items = [
+            { name: 'FLASK', val: h.flask_app, ok: h.flask_app === 'healthy' },
+            { name: 'MONGODB', val: h.mongodb, ok: h.mongodb === 'connected' },
+            { name: 'MYSQL', val: h.mysql, ok: h.mysql === 'connected' },
+        ];
+        grid.innerHTML = items.map(i => `
+            <div class="status-item">
+                <div style="font-size:20px">${i.ok ? '✅' : '❌'}</div>
+                <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">${i.name}</div>
+                <div class="status-val ${i.ok ? 'status-ok' : 'status-err'}">${i.val.toUpperCase()}</div>
+            </div>`).join('');
+    } catch (e) {}
+}
+
+// Initial load
+loadAdminStats();
+loadUsers();
+loadTrafficData();
+loadHealth();
+
+// Auto-refresh
+setInterval(loadAdminStats, 30000);
+setInterval(loadUsers, 60000);
+setInterval(loadTrafficData, 30000);
+setInterval(loadHealth, 30000);
+</script>
+</body>
+</html>

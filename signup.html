@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrafficOS — Create Account</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #05080f; --surface: #0c1220; --border: #1a2640;
+            --accent: #00e5ff; --accent2: #ff6b35; --green: #00ff88;
+            --text: #e0eeff; --muted: #4a6080; --danger: #ff3d5a;
+            --font-mono: 'Space Mono', monospace; --font-display: 'Syne', sans-serif;
+        }
+        body { background: var(--bg); color: var(--text); font-family: var(--font-display); min-height: 100vh; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .grid-bg { position: fixed; inset: 0; background-image: linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px); background-size: 48px 48px; animation: gridPan 20s linear infinite; }
+        @keyframes gridPan { 0% { transform: translateY(0); } 100% { transform: translateY(48px); } }
+        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.12; pointer-events: none; }
+        .orb-1 { width: 500px; height: 500px; background: #ff6b35; bottom: -150px; right: -100px; }
+        .orb-2 { width: 400px; height: 400px; background: var(--accent); top: -100px; left: -100px; }
+        .wrapper { position: relative; z-index: 10; width: 100%; max-width: 440px; padding: 20px; }
+        .brand { text-align: center; margin-bottom: 32px; }
+        .brand-logo { font-family: var(--font-display); font-weight: 800; font-size: 28px; color: var(--accent); display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .brand-logo .icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--accent), #0088ff); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .brand-sub { font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: 4px; text-transform: uppercase; margin-top: 6px; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 36px; position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; inset: 0; background: linear-gradient(135deg, rgba(255,107,53,0.04) 0%, transparent 60%); pointer-events: none; }
+        .card-title { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+        .card-sub { font-family: var(--font-mono); font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-bottom: 28px; }
+        .form-group { margin-bottom: 16px; }
+        label { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+        input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; color: var(--text); font-family: var(--font-mono); font-size: 14px; transition: all 0.2s; outline: none; }
+        input:focus { border-color: var(--accent2); box-shadow: 0 0 0 3px rgba(255,107,53,0.1); }
+        input::placeholder { color: var(--muted); }
+        .btn-primary { width: 100%; padding: 14px; background: linear-gradient(135deg, var(--accent2), #ff8c42); color: #fff; border: none; border-radius: 8px; font-family: var(--font-display); font-weight: 700; font-size: 15px; cursor: pointer; transition: all 0.2s; margin-top: 8px; }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(255,107,53,0.3); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .links { margin-top: 24px; text-align: center; }
+        .links a { color: var(--accent); text-decoration: none; font-size: 13px; }
+        .links a:hover { opacity: 0.7; }
+        .message { margin-top: 16px; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-family: var(--font-mono); display: none; }
+        .message.success { display: block; background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); color: var(--green); }
+        .message.error { display: block; background: rgba(255,61,90,0.1); border: 1px solid rgba(255,61,90,0.3); color: var(--danger); }
+        .strength-bar { height: 3px; border-radius: 2px; background: var(--border); margin-top: 6px; overflow: hidden; }
+        .strength-fill { height: 100%; border-radius: 2px; transition: all 0.3s; width: 0; }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <div class="wrapper">
+        <div class="brand">
+            <div class="brand-logo"><div class="icon">🚦</div> TrafficOS</div>
+            <div class="brand-sub">Smart City Analytics Platform</div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Create Account</div>
+            <div class="card-sub">// NEW OPERATOR REGISTRATION</div>
+
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="choose a username" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="min 6 characters" required minlength="6">
+                    <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+                </div>
+                <button type="submit" class="btn-primary" id="signupBtn">Create Account →</button>
+            </form>
+
+            <div class="message" id="message"></div>
+
+            <div class="links">
+                <a href="login.html">Already have an account? Sign in</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api';
+
+        function showMessage(msg, type) {
+            const el = document.getElementById('message');
+            el.textContent = msg;
+            el.className = 'message ' + type;
+        }
+
+        document.getElementById('password').addEventListener('input', function() {
+            const len = this.value.length;
+            const fill = document.getElementById('strengthFill');
+            if (len < 6) { fill.style.width = '25%'; fill.style.background = '#ff3d5a'; }
+            else if (len < 10) { fill.style.width = '60%'; fill.style.background = '#ffc107'; }
+            else { fill.style.width = '100%'; fill.style.background = '#00ff88'; }
+        });
+
+        document.getElementById('signupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('signupBtn');
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            try {
+                const res = await fetch(`${API_BASE}/signup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        email: document.getElementById('email').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMessage('✅ Account created! Redirecting to login...', 'success');
+                    setTimeout(() => window.location.href = 'login.html', 1500);
+                } else {
+                    showMessage('⚠ ' + data.error, 'error');
+                }
+            } catch (err) {
+                showMessage('⚠ Cannot reach server. Is Docker running?', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Create Account →';
+            }
+        });
+    </script>
+</body>
+</html>

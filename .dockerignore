@@ -1,0 +1,14 @@
+# Never copy these into the Docker image
+__pycache__/
+*.py[cod]
+*.pyc
+.env
+.env.*
+.git/
+.gitignore
+*.md
+*.docx
+*.zip
+*.log
+node_modules/
+.DS_Store

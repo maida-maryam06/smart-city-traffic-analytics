@@ -1,0 +1,152 @@
+# Smart City Traffic Analytics — docker-compose
+# Run: docker compose up --build
+# Stop: docker compose down
+# Wipe data: docker compose down -v
+
+services:
+
+  # ── MongoDB ──────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    container_name: traffic_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  # ── MySQL ─────────────────────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: traffic_mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: traffic_db
+      # Extra user kept for future use; Flask connects as root
+      MYSQL_USER: traffic_user
+      MYSQL_PASSWORD: traffic_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    # BUG FIX: use mysqladmin ping which is reliable even during init
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1",
+             "-u", "root", "--password=rootpassword", "--silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # ── Zookeeper (needed by Kafka) ────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: traffic_zookeeper
+    restart: unless-stopped
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 127.0.0.1 2181 | grep -q imok"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+
+  # ── Kafka ─────────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: traffic_kafka
+    restart: unless-stopped
+    ports:
+      - "9092:9092"   # external (host → container)
+    environment:
+      # BUG FIX: two separate listeners so internal services use kafka:29092
+      # and the host machine can reach localhost:9092 for the simulator.
+      KAFKA_ZOOKEEPER_CONNECT:                  zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP:     INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS:                          INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS:               INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME:         INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:   1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR:      1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE:          "true"
+      KAFKA_LOG_RETENTION_HOURS:               24
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL",
+             "kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # ── Flask API ──────────────────────────────────────────────────────────────
+  flask:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: traffic_flask
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Database connections — use Docker service names, NOT localhost
+      MONGO_URI:      mongodb://mongodb:27017/
+      MYSQL_HOST:     mysql
+      MYSQL_PORT:     "3306"
+      MYSQL_USER:     root
+      MYSQL_PASSWORD: rootpassword
+      MYSQL_DATABASE: traffic_db
+      # Kafka — internal listener
+      KAFKA_BOOTSTRAP: kafka:29092
+      # Admin secret (change in production!)
+      ADMIN_SECRET:   ADMIN123
+      FLASK_ENV:      production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      # Kafka is optional for the Flask API itself; depends_on without
+      # condition so Flask still starts even if Kafka is slow.
+      kafka:
+        condition: service_started
+    # BUG FIX: NO volume mount here — mounting . would shadow the files
+    # already copied into the image by Dockerfile's COPY . .
+    # If you want live-reload during development, uncomment the next two lines:
+    # volumes:
+    #   - .:/app
+
+  # ── Data Simulator (optional — comment out if running manually) ───────────
+  simulator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: traffic_simulator
+    restart: unless-stopped
+    command: ["python", "data_simulator.py"]
+    environment:
+      API_BASE:        http://flask:5000/api
+      KAFKA_BOOTSTRAP: kafka:29092
+    depends_on:
+      flask:
+        condition: service_started
+      kafka:
+        condition: service_started
+
+volumes:
+  mongodb_data:
+  mysql_data:

@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrafficOS — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #05080f;
+            --surface: #0c1220;
+            --surface2: #0f1830;
+            --border: #1a2640;
+            --accent: #00e5ff;
+            --accent2: #ff6b35;
+            --green: #00ff88;
+            --yellow: #ffd60a;
+            --text: #e0eeff;
+            --muted: #4a6080;
+            --danger: #ff3d5a;
+            --font-mono: 'Space Mono', monospace;
+            --font-display: 'Syne', sans-serif;
+        }
+
+        body { background: var(--bg); color: var(--text); font-family: var(--font-display); min-height: 100vh; display: flex; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            min-width: 240px;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 0;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            padding: 0 24px 28px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .sidebar-brand-name {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sidebar-brand-sub {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 2px;
+            margin-top: 4px;
+        }
+
+        .nav-section-label {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 0 24px;
+            margin-bottom: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 24px;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--muted);
+            text-decoration: none;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover { background: rgba(0,229,255,0.05); color: var(--text); }
+        .nav-item.active { background: rgba(0,229,255,0.08); color: var(--accent); border-left-color: var(--accent); }
+        .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+
+        .sidebar-bottom {
+            margin-top: auto;
+            padding: 20px 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .user-avatar {
+            width: 34px;
+            height: 34px;
+            background: linear-gradient(135deg, var(--accent), #0088ff);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: #000;
+        }
+
+        .user-name { font-size: 13px; font-weight: 700; }
+        .user-role { font-family: var(--font-mono); font-size: 10px; color: var(--muted); }
+
+        .btn-logout {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--muted);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* Main content */
+        .main {
+            margin-left: 240px;
+            flex: 1;
+            padding: 28px;
+            overflow-y: auto;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--text);
+        }
+
+        .page-sub {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--muted);
+            margin-top: 2px;
+        }
+
+        .live-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0,255,136,0.1);
+            border: 1px solid rgba(0,255,136,0.2);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--green);
+        }
+
+        .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 1.5s ease-in-out infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+
+        /* Stats grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .stat-card:hover { border-color: rgba(0,229,255,0.3); }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            background: var(--accent);
+            opacity: 0.5;
+        }
+
+        .stat-card.orange::after { background: var(--accent2); }
+        .stat-card.green::after { background: var(--green); }
+        .stat-card.yellow::after { background: var(--yellow); }
+
+        .stat-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .stat-trend {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        .stat-icon {
+            position: absolute;
+            top: 16px; right: 16px;
+            font-size: 22px;
+            opacity: 0.4;
+        }
+
+        /* Content grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 22px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .panel-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .panel-sub {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        .btn-refresh {
+            background: rgba(0,229,255,0.08);
+            border: 1px solid rgba(0,229,255,0.2);
+            color: var(--accent);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-refresh:hover { background: rgba(0,229,255,0.15); }
+
+        /* Traffic table */
+        .traffic-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .traffic-table th {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .traffic-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(26,38,64,0.5);
+            vertical-align: middle;
+        }
+
+        .traffic-table tr:last-child td { border-bottom: none; }
+        .traffic-table tr:hover td { background: rgba(0,229,255,0.03); }
+
+        .vehicle-id {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--accent);
+        }
+
+        .speed-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .speed-high { background: rgba(0,255,136,0.1); color: var(--green); }
+        .speed-med { background: rgba(255,214,10,0.1); color: var(--yellow); }
+        .speed-low { background: rgba(255,61,90,0.1); color: var(--danger); }
+
+        .type-badge {
+            padding: 2px 8px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--muted);
+        }
+
+        /* Alert cards */
+        .alert-item {
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border-left: 3px solid;
+        }
+
+        .alert-high { background: rgba(255,61,90,0.08); border-left-color: var(--danger); }
+        .alert-medium { background: rgba(255,214,10,0.08); border-left-color: var(--yellow); }
+        .alert-low { background: rgba(0,229,255,0.08); border-left-color: var(--accent); }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .alert-road { font-size: 14px; font-weight: 700; }
+        .alert-severity {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 1px;
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+        .sev-high { background: var(--danger); color: white; }
+        .sev-medium { background: var(--yellow); color: #000; }
+        .sev-low { background: var(--accent); color: #000; }
+
+        .alert-details { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+        /* Map visualization */
+        .map-panel {
+            grid-column: 1 / -1;
+            position: relative;
+        }
+
+        .city-map {
+            width: 100%;
+            height: 280px;
+            background: var(--surface2);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .map-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0,229,255,0.06) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,229,255,0.06) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .map-road {
+            position: absolute;
+            background: rgba(0,229,255,0.15);
+            border: 1px solid rgba(0,229,255,0.1);
+        }
+
+        .map-vehicle {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            transform: translate(-50%, -50%);
+            transition: all 1s ease;
+            box-shadow: 0 0 8px currentColor;
+        }
+        .map-vehicle.congested { background: var(--danger); }
+        .map-vehicle.moderate { background: var(--yellow); }
+
+        .map-label {
+            position: absolute;
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: rgba(0,229,255,0.6);
+            letter-spacing: 1px;
+        }
+
+        /* System status */
+        .status-grid {
+            display: flex;
+            gap: 12px;
+        }
+
+        .status-item {
+            flex: 1;
+            padding: 14px;
+            background: var(--surface2);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .status-indicator {
+            font-size: 20px;
+            margin-bottom: 6px;
+        }
+
+        .status-name {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1px;
+        }
+
+        .status-val {
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        .status-ok { color: var(--green); }
+        .status-err { color: var(--danger); }
+
+        /* Simulate button */
+        .btn-simulate {
+            background: linear-gradient(135deg, var(--accent2), #ff8c42);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: var(--font-display);
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-simulate:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,107,53,0.3); }
+
+        /* Loading skeleton */
+        .skeleton { background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 4px; height: 16px; margin: 8px 0; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-family: var(--font-mono); font-size: 12px; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px; right: 24px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 20px;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            z-index: 999;
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.3s;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .toast.success { border-color: rgba(0,255,136,0.4); color: var(--green); }
+        .toast.error { border-color: rgba(255,61,90,0.4); color: var(--danger); }
+
+        .time-display {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        canvas { max-height: 220px; }
+
+        @media (max-width: 1200px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .content-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="sidebar-brand-name">🚦 TrafficOS</div>
+        <div class="sidebar-brand-sub">// CITY ANALYTICS</div>
+    </div>
+
+    <div class="nav-section-label" style="margin-top:8px">Monitor</div>
+    <a class="nav-item active" onclick="scrollTo({top:0})">
+        <span class="icon">📊</span> Dashboard
+    </a>
+    <a class="nav-item" onclick="scrollToSection('alerts')">
+        <span class="icon">🚨</span> Alerts
+    </a>
+    <a class="nav-item" onclick="scrollToSection('map')">
+        <span class="icon">🗺️</span> City Map
+    </a>
+    <a class="nav-item" onclick="scrollToSection('traffic')">
+        <span class="icon">🚗</span> Traffic Feed
+    </a>
+
+    <div class="nav-section-label" style="margin-top:16px">System</div>
+    <a class="nav-item" onclick="scrollToSection('status')">
+        <span class="icon">⚙️</span> System Status
+    </a>
+    <a class="nav-item" onclick="scrollToSection('simulate')">
+        <span class="icon">🎮</span> Simulator
+    </a>
+
+    <div class="sidebar-bottom">
+        <div class="user-info">
+            <div class="user-avatar" id="userAvatar">?</div>
+            <div>
+                <div class="user-name" id="userName">Loading...</div>
+                <div class="user-role" id="userRole">operator</div>
+            </div>
+        </div>
+        <button class="btn-logout" onclick="logout()">⏻ Sign out</button>
+    </div>
+</aside>
+
+<main class="main">
+    <div class="topbar">
+        <div>
+            <div class="page-title">Operations Dashboard</div>
+            <div class="page-sub" id="timeDisplay">—</div>
+        </div>
+        <div class="live-badge">
+            <div class="live-dot"></div>
+            LIVE MONITORING
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-label">Total Users</div>
+            <div class="stat-value" id="statUsers">—</div>
+            <div class="stat-trend">registered operators</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-icon">🚗</div>
+            <div class="stat-label">Traffic Records</div>
+            <div class="stat-value" id="statTraffic">—</div>
+            <div class="stat-trend">in database</div>
+        </div>
+        <div class="stat-card yellow">
+            <div class="stat-icon">🚨</div>
+            <div class="stat-label">Active Alerts</div>
+            <div class="stat-value" id="statAlerts">—</div>
+            <div class="stat-trend">unresolved</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-icon">📏</div>
+            <div class="stat-label">Avg Speed</div>
+            <div class="stat-value" id="statSpeed">—</div>
+            <div class="stat-trend">km/h across all roads</div>
+        </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="content-grid" style="margin-bottom:20px">
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Vehicle Distribution</div>
+                    <div class="panel-sub">by type, last 5 minutes</div>
+                </div>
+            </div>
+            <canvas id="vehicleChart"></canvas>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">Speed Heatmap</div>
+                    <div class="panel-sub">congestion index by road</div>
+                </div>
+            </div>
+            <canvas id="speedChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div class="panel map-panel" id="map" style="margin-bottom:20px">
+        <div class="panel-header">
+            <div>
+                <div class="panel-title">🗺️ Live City Map</div>
+                <div class="panel-sub">real-time vehicle positions</div>
+            </div>
+            <button class="btn-refresh" onclick="updateMap()">↻ Refresh</button>
+        </div>
+        <div class="city-map" id="cityMap">
+            <div class="map-grid"></div>
+            <!-- Roads and vehicles rendered by JS -->
+        </div>
+    </div>
+
+    <!-- Alerts + Traffic table -->
+    <div class="content-grid" style="margin-bottom:20px">
+        <div class="panel" id="alerts">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">🚨 Congestion Alerts</div>
+                    <div class="panel-sub">active incidents</div>
+                </div>
+                <button class="btn-refresh" onclick="loadAlerts()">↻ Refresh</button>
+            </div>
+            <div id="alertsContainer">
+                <div class="skeleton"></div>
+                <div class="skeleton" style="width:80%"></div>
+                <div class="skeleton" style="width:60%"></div>
+            </div>
+        </div>
+
+        <div class="panel" id="traffic">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">🚗 Traffic Feed</div>
+                    <div class="panel-sub">recent records</div>
+                </div>
+                <button class="btn-refresh" onclick="loadTraffic()">↻ Refresh</button>
+            </div>
+            <div style="overflow-x:auto; max-height:320px; overflow-y:auto">
+                <table class="traffic-table">
+                    <thead>
+                        <tr>
+                            <th>Vehicle</th>
+                            <th>Speed</th>
+                            <th>Road</th>
+                            <th>Type</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trafficBody">
+                        <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted);font-family:var(--font-mono);font-size:12px">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- System status + Simulator -->
+    <div class="content-grid">
+        <div class="panel" id="status">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">⚙️ System Status</div>
+                    <div class="panel-sub">service health</div>
+                </div>
+                <button class="btn-refresh" onclick="loadHealth()">↻ Check</button>
+            </div>
+            <div class="status-grid" id="statusGrid">
+                <div class="status-item"><div class="status-indicator">⏳</div><div class="status-name">FLASK</div><div class="status-val">—</div></div>
+                <div class="status-item"><div class="status-indicator">⏳</div><div class="status-name">MONGODB</div><div class="status-val">—</div></div>
+                <div class="status-item"><div class="status-indicator">⏳</div><div class="status-name">MYSQL</div><div class="status-val">—</div></div>
+            </div>
+        </div>
+
+        <div class="panel" id="simulate">
+            <div class="panel-header">
+                <div>
+                    <div class="panel-title">🎮 Data Simulator</div>
+                    <div class="panel-sub">inject test traffic records</div>
+                </div>
+            </div>
+            <p style="font-size:13px;color:var(--muted);margin-bottom:16px;font-family:var(--font-mono);line-height:1.6">
+                200 simulated vehicles across 4 city roads. Records auto-refresh every 15s.
+            </p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn-simulate" onclick="addSingle()">+ Add 1 Record</button>
+                <button class="btn-simulate" style="background:linear-gradient(135deg,#0088ff,#00e5ff);color:#000" onclick="addBulk()">⚡ Add 20 Records</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = 'http://localhost:5000/api';
+let vehicleChart = null;
+let speedChart = null;
+
+// Auth check
+const userStr = localStorage.getItem('user');
+if (!userStr) { window.location.href = 'login.html'; }
+const user = JSON.parse(userStr || '{}');
+document.getElementById('userName').textContent = user.username || 'Unknown';
+document.getElementById('userRole').textContent = user.is_admin ? 'admin' : 'operator';
+document.getElementById('userAvatar').textContent = (user.username || 'U')[0].toUpperCase();
+
+function logout() {
+    if (confirm('Sign out?')) { localStorage.removeItem('user'); window.location.href = 'login.html'; }
+}
+
+function scrollToSection(id) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Clock
+function updateClock() {
+    document.getElementById('timeDisplay').textContent =
+        '// ' + new Date().toLocaleString([], { weekday:'long', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Toast
+function toast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'toast show ' + type;
+    setTimeout(() => el.className = 'toast', 3000);
+}
+
+// Load stats
+async function loadStats() {
+    try {
+        const [statsRes, rtRes] = await Promise.all([
+            fetch(`${API_BASE}/stats`),
+            fetch(`${API_BASE}/real-time-stats`)
+        ]);
+        const stats = await statsRes.json();
+        const rt = await rtRes.json();
+
+        document.getElementById('statUsers').textContent = stats.total_users ?? 0;
+        document.getElementById('statTraffic').textContent = stats.total_traffic_records ?? 0;
+        document.getElementById('statAlerts').textContent = stats.active_congestion_alerts ?? 0;
+        document.getElementById('statSpeed').textContent = (rt.avg_speed ?? 0) + ' km/h';
+
+        updateVehicleChart(rt.vehicle_types || {});
+    } catch (e) {
+        console.error('Stats error', e);
+    }
+}
+
+// Load health
+async function loadHealth() {
+    try {
+        const res = await fetch(`${API_BASE}/health`);
+        const h = await res.json();
+        const grid = document.getElementById('statusGrid');
+
+        const items = [
+            { name: 'FLASK', val: h.flask_app, ok: h.flask_app === 'healthy' },
+            { name: 'MONGODB', val: h.mongodb, ok: h.mongodb === 'connected' },
+            { name: 'MYSQL', val: h.mysql, ok: h.mysql === 'connected' },
+        ];
+
+        grid.innerHTML = items.map(i => `
+            <div class="status-item">
+                <div class="status-indicator">${i.ok ? '✅' : '❌'}</div>
+                <div class="status-name">${i.name}</div>
+                <div class="status-val ${i.ok ? 'status-ok' : 'status-err'}">${i.val.toUpperCase()}</div>
+            </div>
+        `).join('');
+    } catch (e) {
+        document.getElementById('statusGrid').innerHTML = '<div style="color:var(--danger);font-family:var(--font-mono);font-size:12px;padding:10px">Cannot reach server</div>';
+    }
+}
+
+// Load alerts
+async function loadAlerts() {
+    try {
+        const res = await fetch(`${API_BASE}/congestion-map`);
+        const data = await res.json();
+        const alerts = data.congestion_alerts || [];
+        const container = document.getElementById('alertsContainer');
+
+        if (!alerts.length) {
+            container.innerHTML = '<div class="empty-state">🎉 No active alerts<br>Traffic flowing smoothly</div>';
+            return;
+        }
+
+        container.innerHTML = alerts.map(a => `
+            <div class="alert-item alert-${a.severity || 'medium'}">
+                <div class="alert-header">
+                    <div class="alert-road">${a.road_name || 'Unknown Road'}</div>
+                    <span class="alert-severity sev-${a.severity || 'medium'}">${(a.severity || 'medium').toUpperCase()}</span>
+                </div>
+                <div class="alert-details">
+                    📏 ${a.avg_speed || 0} km/h &nbsp;|&nbsp; 🚗 ${a.vehicle_count || 0} vehicles &nbsp;|&nbsp; 📍 ${a.cause || '—'}
+                    ${a.timestamp ? `<br>⏱ ${new Date(a.timestamp).toLocaleTimeString()}` : ''}
+                </div>
+            </div>
+        `).join('');
+
+        document.getElementById('statAlerts').textContent = alerts.length;
+    } catch (e) {
+        document.getElementById('alertsContainer').innerHTML = '<div class="empty-state" style="color:var(--danger)">Error loading alerts</div>';
+    }
+}
+
+// Load traffic table
+async function loadTraffic() {
+    try {
+        const res = await fetch(`${API_BASE}/traffic-data?limit=20`);
+        const data = await res.json();
+        const records = data.data || data || [];
+        const tbody = document.getElementById('trafficBody');
+
+        if (!records.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No records yet. Use the simulator!</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = records.slice(0, 15).map(r => {
+            const sp = r.speed || 0;
+            const cls = sp > 40 ? 'speed-high' : sp > 20 ? 'speed-med' : 'speed-low';
+            return `
+                <tr>
+                    <td><span class="vehicle-id">${r.vehicle_id || '—'}</span></td>
+                    <td><span class="speed-badge ${cls}">${sp} km/h</span></td>
+                    <td style="font-size:12px">${r.road_name || '—'}</td>
+                    <td><span class="type-badge">${r.vehicle_type || 'car'}</span></td>
+                    <td style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${r.timestamp ? new Date(r.timestamp).toLocaleTimeString() : '—'}</td>
+                </tr>
+            `;
+        }).join('');
+
+        // Update speed chart
+        updateSpeedChart(records);
+    } catch (e) {
+        document.getElementById('trafficBody').innerHTML = '<tr><td colspan="5" class="empty-state" style="color:var(--danger)">Error loading data</td></tr>';
+    }
+}
+
+// Charts
+function updateVehicleChart(vehicleTypes) {
+    const ctx = document.getElementById('vehicleChart').getContext('2d');
+    const labels = Object.keys(vehicleTypes);
+    const values = Object.values(vehicleTypes);
+
+    if (vehicleChart) vehicleChart.destroy();
+
+    vehicleChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels.length ? labels : ['No data'],
+            datasets: [{
+                data: values.length ? values : [1],
+                backgroundColor: ['#00e5ff', '#ff6b35', '#00ff88', '#ffd60a'],
+                borderColor: '#0c1220',
+                borderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: { color: '#4a6080', font: { family: 'Space Mono', size: 11 }, padding: 16 }
+                }
+            }
+        }
+    });
+}
+
+function updateSpeedChart(records) {
+    const ctx = document.getElementById('speedChart').getContext('2d');
+
+    // Group by road
+    const roadSpeeds = {};
+    records.forEach(r => {
+        if (!roadSpeeds[r.road_name]) roadSpeeds[r.road_name] = [];
+        roadSpeeds[r.road_name].push(r.speed || 0);
+    });
+
+    const labels = Object.keys(roadSpeeds);
+    const avgSpeeds = labels.map(road => {
+        const speeds = roadSpeeds[road];
+        return Math.round(speeds.reduce((a,b) => a+b, 0) / speeds.length);
+    });
+
+    if (speedChart) speedChart.destroy();
+
+    speedChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Avg Speed (km/h)',
+                data: avgSpeeds,
+                backgroundColor: avgSpeeds.map(s => s > 40 ? 'rgba(0,255,136,0.6)' : s > 20 ? 'rgba(255,214,10,0.6)' : 'rgba(255,61,90,0.6)'),
+                borderColor: avgSpeeds.map(s => s > 40 ? '#00ff88' : s > 20 ? '#ffd60a' : '#ff3d5a'),
+                borderWidth: 2,
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(26,38,64,0.8)' },
+                    ticks: { color: '#4a6080', font: { family: 'Space Mono', size: 10 } }
+                },
+                x: {
+                    grid: { display: false },
+                    ticks: { color: '#4a6080', font: { family: 'Space Mono', size: 10 } }
+                }
+            }
+        }
+    });
+}
+
+// Map
+async function updateMap() {
+    try {
+        const res = await fetch(`${API_BASE}/congestion-map`);
+        const data = await res.json();
+        renderMap(data.vehicle_positions || []);
+    } catch (e) {}
+}
+
+function renderMap(vehicles) {
+    const map = document.getElementById('cityMap');
+    // Remove old vehicles
+    map.querySelectorAll('.map-vehicle, .map-road, .map-label').forEach(el => el.remove());
+
+    const w = map.clientWidth || 600;
+    const h = map.clientHeight || 280;
+
+    // Draw roads
+    const roads = [
+        { name: 'Main St', x1: 0.1, y1: 0.3, x2: 0.9, y2: 0.3, horiz: true },
+        { name: 'Broadway', x1: 0.1, y1: 0.7, x2: 0.9, y2: 0.7, horiz: true },
+        { name: '5th Ave', x1: 0.3, y1: 0.05, x2: 0.3, y2: 0.95, horiz: false },
+        { name: 'Park Ave', x1: 0.7, y1: 0.05, x2: 0.7, y2: 0.95, horiz: false },
+    ];
+
+    roads.forEach(r => {
+        const road = document.createElement('div');
+        road.className = 'map-road';
+        if (r.horiz) {
+            road.style.cssText = `left:${r.x1*100}%;top:${r.y1*100}%;width:${(r.x2-r.x1)*100}%;height:3px`;
+        } else {
+            road.style.cssText = `left:${r.x1*100}%;top:${r.y1*100}%;width:3px;height:${(r.y2-r.y1)*100}%`;
+        }
+        map.appendChild(road);
+
+        const label = document.createElement('div');
+        label.className = 'map-label';
+        label.textContent = r.name;
+        label.style.cssText = `left:${(r.horiz ? r.x1 : r.x1)*100+1}%;top:${(r.horiz ? r.y1 : r.y1)*100+1}%`;
+        map.appendChild(label);
+    });
+
+    // Plot vehicles (sample max 40 for performance)
+    const sample = vehicles.slice(0, 40);
+    sample.forEach(v => {
+        if (!v.latitude || !v.longitude) return;
+
+        // Map lat/lon to pixel position
+        const latRange = [40.744, 40.768];
+        const lonRange = [-74.016, -73.993];
+        const px = (v.longitude - lonRange[0]) / (lonRange[1] - lonRange[0]);
+        const py = 1 - (v.latitude - latRange[0]) / (latRange[1] - latRange[0]);
+
+        const dot = document.createElement('div');
+        dot.className = 'map-vehicle' +
+            (v.speed < 20 ? ' congested' : v.speed < 40 ? ' moderate' : '');
+        dot.style.cssText = `left:${Math.max(2,Math.min(98,px*100))}%;top:${Math.max(2,Math.min(98,py*100))}%`;
+        dot.title = `${v.vehicle_id}: ${v.speed} km/h on ${v.road_name}`;
+        map.appendChild(dot);
+    });
+}
+
+// Simulator
+async function addSingle() {
+    const roads = ['Main Street', 'Broadway', '5th Avenue', 'Park Avenue'];
+    try {
+        const res = await fetch(`${API_BASE}/simulate-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                vehicle_id: 'DEMO_' + Math.random().toString(36).substr(2, 5).toUpperCase(),
+                speed: Math.round(Math.random() * 80 + 5),
+                road_name: roads[Math.floor(Math.random() * roads.length)],
+                latitude: 40.75 + (Math.random() - 0.5) * 0.02,
+                longitude: -74.00 + (Math.random() - 0.5) * 0.02,
+                vehicle_type: ['car','truck','bus','motorcycle'][Math.floor(Math.random()*4)]
+            })
+        });
+        if (res.ok) { toast('✅ Record added!', 'success'); refreshAll(); }
+    } catch (e) { toast('⚠ Server error', 'error'); }
+}
+
+async function addBulk() {
+    try {
+        const res = await fetch(`${API_BASE}/bulk-simulate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ count: 20 })
+        });
+        if (res.ok) { toast('⚡ 20 records added!', 'success'); refreshAll(); }
+        else { toast('⚠ Error — make sure server is running', 'error'); }
+    } catch (e) { toast('⚠ Server error', 'error'); }
+}
+
+function refreshAll() {
+    loadStats();
+    loadAlerts();
+    loadTraffic();
+    updateMap();
+    loadHealth();
+}
+
+// Initial load
+refreshAll();
+
+// Auto-refresh intervals
+setInterval(loadStats, 10000);
+setInterval(loadAlerts, 15000);
+setInterval(loadTraffic, 20000);
+setInterval(updateMap, 12000);
+setInterval(loadHealth, 30000);
+</script>
+</body>
+</html>
